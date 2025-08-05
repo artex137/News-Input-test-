@@ -1,0 +1,40 @@
+name: Generate Article from Upload
+
+on:
+  push:
+    paths:
+      - 'static/images/uploaded/**'
+      - 'static/texts/uploaded/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install openai jinja2 Pillow
+
+    - name: Run article generation script
+      run: |
+        python api/generate_article.py
+
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+    - name: Commit new article and index
+      run: |
+        git config --global user.name 'AutoNewsBot'
+        git config --global user.email 'autobot@example.com'
+        git add articles/ data/article_index.json
+        git commit -m "📝 New article generated"
+        git push
