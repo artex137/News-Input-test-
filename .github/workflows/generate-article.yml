@@ -27,7 +27,6 @@ jobs:
     - name: Run article generation script
       run: |
         python api/generate_article.py
-
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
@@ -35,6 +34,6 @@ jobs:
       run: |
         git config --global user.name 'AutoNewsBot'
         git config --global user.email 'autobot@example.com'
-        git add articles/ data/article_index.json
+        git add articles/ templates/data/article_index.json
         git commit -m "📝 New article generated"
         git push
