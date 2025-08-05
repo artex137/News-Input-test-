@@ -11,8 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
+    - name: Checkout repo with custom credentials
       uses: actions/checkout@v3
+      with:
+        persist-credentials: false
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -30,14 +32,11 @@ jobs:
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-    - name: Configure Git for push
+    - name: Configure Git and push changes
       run: |
         git config --global user.name "AutoNewsBot"
         git config --global user.email "autobot@example.com"
         git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
-
-    - name: Commit and push new article + index
-      run: |
         git add articles/ templates/data/article_index.json
         git commit -m "📝 New article generated" || echo "No changes to commit"
         git push origin HEAD:main
