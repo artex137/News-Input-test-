@@ -1,0 +1,28 @@
+3<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ title }}</title>
+  <link rel="stylesheet" href="../static/css/styles.css">
+</head>
+<body>
+  <div class="navbar">
+    <div class="logo">Auto News</div>
+    <a href="#">www.autonews.ai</a>
+  </div>
+
+  <div class="main">
+    <div class="subtext"><span style="color: #00bfff;">Canada</span> | News</div>
+    <div class="headline">{{ title }}</div>
+    <div class="subtext">Published: {{ date }}</div>
+
+    <img class="article-image" src="../static/images/article-images/{{ image_filename }}" alt="Generated news image">
+    <div class="caption">{{ caption }}</div>
+
+    <div class="article-body">
+      {{ body | safe }}
+    </div>
+  </div>
+</body>
+</html>
