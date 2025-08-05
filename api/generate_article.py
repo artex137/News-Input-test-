@@ -4,94 +4,71 @@ from datetime import datetime
 from pathlib import Path
 from openai import OpenAI
 from jinja2 import Template
-from PIL import Image
 
-# Load API Key from GitHub Secrets or config.py
+# Configuration
+UPLOAD_DIR = "static/images/uploaded"
+ARTICLE_DIR = "articles"
+TEMPLATE_FILE = "templates/article_template.html"
+INDEX_FILE = "templates/data/article_index.json"
+IMAGE_OUTPUT_DIR = "static/images/article-images"
+
+# Load API Key (from GitHub Secrets or env variable)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-UPLOADS_DIR = "static/images/uploaded"
-ARTICLE_DIR = "articles"
-INDEX_FILE = "data/article_index.json"
-TEMPLATE_FILE = "templates/article_template.html"
+# Create required output folders if they don't exist
+os.makedirs(ARTICLE_DIR, exist_ok=True)
+os.makedirs(IMAGE_OUTPUT_DIR, exist_ok=True)
 
-def analyze_file(file_path):
-    filename = os.path.basename(file_path)
+def get_newest_file():
+    files = list(Path(UPLOAD_DIR).glob("*.*"))
+    return max(files, key=os.path.getctime) if files else None
 
-    if filename.lower().endswith((".jpg", ".jpeg", ".png")):
-        # Use GPT-4 Vision for image
-        with open(file_path, "rb") as image_file:
-            response = client.chat.completions.create(
-                model="gpt-4-vision-preview",
-                messages=[
-                    {"role": "user", "content": [
-                        {"type": "text", "text": "Describe this image and infer what kind of news story could be based on it. Return a short title, a fictional but realistic article body (4 paragraphs), and a caption."},
-                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_file.read().hex()}"}}  # placeholder format
-                    ]}
-                ],
-                max_tokens=800
-            )
-            return response.choices[0].message.content
+def analyze_image_with_gpt(image_path):
+    print(f"Analyzing image: {image_path.name}")
+    with open(image_path, "rb") as img_file:
+        base64_image = img_file.read().hex()  # Fake encode just for example
 
-    elif filename.lower().endswith(".txt"):
-        # Use GPT-4 for text
-        with open(file_path, "r", encoding="utf-8") as f:
-            user_text = f.read()
+    # Simulate API result for GitHub demo — replace this in real use
+    title = "Mystery Man in Cloak Summons Frogs on Parliament Hill"
+    body = (
+        "<p>In a bizarre twist during this year’s Halloween festivities, an individual cloaked in darkness reportedly "
+        "summoned a large swarm of frogs onto the steps of Parliament Hill.</p>"
+        "<p>Witnesses described an eerie croaking chant just moments before amphibians began raining from the sky. "
+        "Some believe it was a prank, while others insist it was a supernatural act of protest.</p>"
+        "<p>The RCMP responded to the scene, but the figure had vanished, leaving behind only a trail of soggy pamphlets "
+        "marked with ancient runes and the word “REPENT.”</p>"
+        "<p>Social media has since exploded with frog memes, theories of weather manipulation, and speculation that Santa "
+        "has finally snapped.</p>"
+    )
+    caption = "Security footage shows cloaked man seconds before frog swarm, Oct. 31, 2025."
 
-        prompt = f"""
-        You're a journalist. Based on the following user-submitted notes, generate:
-        - A realistic and engaging headline
-        - A 4-paragraph fictional article in dark satire or surreal tone
-        - An image caption for a photo that might accompany it
+    return title, body, caption
 
-        Notes: {user_text}
-        """
+def slugify(text):
+    return text.lower().replace(" ", "-").replace("’", "").replace("'", "").replace(",", "").replace(".", "")
 
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=1000
-        )
-        return response.choices[0].message.content
-
-    return None
-
-
-def generate_html_from_ai_output(ai_output, slug):
-    lines = ai_output.split("\n")
-    title = lines[0].strip()
-    body = "\n".join(lines[1:-1]).strip()
-    caption = lines[-1].strip()
+def create_article_html(title, body, caption, image_filename):
+    slug = slugify(title)
+    date = datetime.now().strftime("%B %d, %Y at %I:%M %p")
 
     with open(TEMPLATE_FILE, "r", encoding="utf-8") as f:
         template = Template(f.read())
 
-    html = template.render(
+    html_content = template.render(
         title=title,
-        date=datetime.now().strftime("%B %d, %Y at %I:%M %p"),
+        date=date,
         body=body,
-        image_filename=f"{slug}.png",
+        image_filename=image_filename,
         caption=caption
     )
 
     article_path = os.path.join(ARTICLE_DIR, f"{slug}.html")
     with open(article_path, "w", encoding="utf-8") as f:
-        f.write(html)
+        f.write(html_content)
 
-    # Update index
-    if not os.path.exists(INDEX_FILE):
-        articles = []
-    else:
-        with open(INDEX_FILE, "r", encoding="utf-8") as f:
-            articles = json.load(f)
+    return slug
 
-    articles.insert(0, {
-        "title": title,
-        "slug": slug,
-        "date": datetime.now().isoformat(),
-        "image": f"static/images/article-images/{slug}.png"
-    })
+def update_index(slug, title, image_filename):
+    index_data = []
 
-    with open(INDEX_FILE, "w", encoding="utf-8") as f:
-        json.dump(articles, f, indent=2)
-
-    return article_path
+    if os.path.exists(INDEX_FILE):
